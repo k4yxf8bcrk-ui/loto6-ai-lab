@@ -386,15 +386,8 @@
 
     // ★ 初期データ（新しい端末で初回アクセスしたときだけ使われる）
     //   あとから増やしたいときは、この配列に { round, nums, bonus } を追加すればOK
-    const DEFAULT_RAW_DRAWS = [
-      // 例：回号 第1969回 2025/01/30 3 7 12 13 35 38 (24)
-      { round: 1969, nums: [3, 7, 12, 13, 35, 38], bonus: 24 },
-      // 以下は 1641〜1644回のサンプルデータ
-      { round: 1641, nums: [2, 5, 7, 12, 16, 20], bonus: 33 },
-      { round: 1642, nums: [5, 15, 16, 24, 34, 39], bonus: 13 },
-      { round: 1643, nums: [10, 11, 12, 15, 16, 40], bonus: 33 },
-      { round: 1644, nums: [1, 9, 14, 28, 32, 40], bonus: 15 }
-    ];
+    const DEFAULT_RAW_DRAWS = [];
+
 
     let lotoHistoryCounts = new Array(44).fill(0); // 1〜43の出現回数（本数字＋ボーナス）
     let lotoHistoryTotal = 0; // 全ての数字の総数（本数字6×回数＋ボーナス）
