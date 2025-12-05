@@ -333,6 +333,16 @@
       </div>
     </div>
 
+    <!-- ★ ここに「過去データをクリア」ボタン -->
+    <div class="field" style="margin-top:10px;">
+      <button class="secondary" onclick="clearAllHistory()">過去データをすべてクリアして初期状態に戻す</button>
+      <div class="note">
+        この端末に保存されているロト6の過去データ（localStorage）を全削除し、<br>
+        JavaScript 内で定義されている DEFAULT_RAW_DRAWS だけの状態にリセットします。<br>
+        ※本気データを DEFAULT_RAW_DRAWS に焼き込んだあとに押すと、その本気データだけの状態に戻せます。
+      </div>
+    </div>
+
     <!-- ④ 開発者向け：初期データJSON/JS出力 -->
     <div class="field" style="margin-top:10px;">
       <label>④ 開発者向け：初期データJSON/JS出力</label>
@@ -790,7 +800,7 @@
       return candidates[idx];
     }
 
-        // ===== 過去データ解析（追加＆累積） =====
+    // ===== 過去データ解析（追加＆累積） =====
     function analyzeHistory() {
       const input = document.getElementById("history-input").value;
       const summaryElem = document.getElementById("history-summary");
@@ -964,7 +974,6 @@
       updateSummary();
       saveState(); // 毎回保存
     }
-
 
     function renderHistoryTable() {
       const tbody = document.getElementById("history-table-body");
@@ -1198,6 +1207,27 @@
 
       ta.value = code;
       alert("今の全データから『初期データ用コード』を生成しました。このテキストをコピーして index.html の DEFAULT_RAW_DRAWS 定義に貼り付けてください。");
+    }
+
+    // ===== 過去データ全クリア（初期状態に戻す） =====
+    function clearAllHistory() {
+      if (!confirm("この端末に保存されているロト6の過去データをすべて削除して、初期状態に戻します。\nよろしいですか？")) {
+        return;
+      }
+      try {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+      } catch (e) {
+        console.error("clear localStorage failed", e);
+      }
+      // メモリもクリアしてから、初期データを再読み込み
+      lotoHistoryCounts = new Array(44).fill(0);
+      lotoHistoryTotal = 0;
+      lotoDraws = [];
+      nextIndex = 0;
+
+      loadState(); // DEFAULT_RAW_DRAWS から再初期化
+      document.getElementById("history-input").value = "";
+      alert("過去データをクリアし、初期状態に戻しました。");
     }
 
     // ===== 共通ユーティリティ =====
