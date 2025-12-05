@@ -269,7 +269,8 @@
       <label>予想結果（アイコン表示）</label>
       <div id="loto-result-icons"></div>
       <div class="note">
-        【1口目】の右に並んでいる丸い玉が本数字、<span class="ball ball-bonus" style="vertical-align:middle;">07</span> のような水色の玉がボーナス候補です。
+        【1口目】の右に並んでいる丸い玉が本数字、
+        <span class="ball ball-bonus" style="vertical-align:middle;">07</span> のような水色の玉がボーナス候補です。
       </div>
     </div>
 
@@ -359,11 +360,70 @@
 
   <script>
     // ===== グローバル（累積データ） =====
+    const LOCAL_STORAGE_KEY = "loto6AiLabState_v1";
+
     let lotoHistoryCounts = new Array(44).fill(0); // 1〜43の出現回数（本数字＋ボーナス）
     let lotoHistoryTotal = 0; // 全ての数字の総数（本数字6×回数＋ボーナス）
     // { round: number|null, nums: [6], bonus: number|null, index: number }
     let lotoDraws = [];
     let nextIndex = 0;
+
+    // ----- 保存・読み込み -----
+    function saveState() {
+      try {
+        const state = {
+          draws: lotoDraws,
+          counts: lotoHistoryCounts,
+          total: lotoHistoryTotal,
+          nextIndex: nextIndex
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error("saveState failed", e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!raw) {
+          renderHistoryTable();
+          updateSummary();
+          return;
+        }
+        const state = JSON.parse(raw);
+        if (!state || !Array.isArray(state.draws) || !Array.isArray(state.counts)) {
+          renderHistoryTable();
+          updateSummary();
+          return;
+        }
+
+        // draws 復元
+        lotoDraws = state.draws
+          .filter(d => d && Array.isArray(d.nums))
+          .map((d, idx) => ({
+            round: (typeof d.round === "number" ? d.round : null),
+            nums: d.nums.map(n => parseInt(n, 10)).filter(n => !isNaN(n)),
+            bonus: (typeof d.bonus === "number" && !isNaN(d.bonus)) ? d.bonus : null,
+            index: (typeof d.index === "number" ? d.index : idx)
+          }));
+
+        // counts 復元
+        lotoHistoryCounts = new Array(44).fill(0);
+        for (let i = 0; i < 44; i++) {
+          if (state.counts && typeof state.counts[i] === "number") {
+            lotoHistoryCounts[i] = state.counts[i];
+          }
+        }
+
+        lotoHistoryTotal = (typeof state.total === "number" ? state.total : 0);
+        nextIndex = (typeof state.nextIndex === "number" ? state.nextIndex : lotoDraws.length);
+      } catch (e) {
+        console.error("loadState failed", e);
+      }
+      renderHistoryTable();
+      updateSummary();
+    }
 
     function showTab(name) {
       const homePanel = document.getElementById("panel-home");
@@ -820,6 +880,7 @@
 
       renderHistoryTable();
       updateSummary();
+      saveState(); // ★ ここで毎回保存
     }
 
     function renderHistoryTable() {
@@ -1041,6 +1102,15 @@
     function openRakuten() {
       window.open("https://takarakuji.rakuten.co.jp/backnumber/loto6_past/", "_blank");
     }
+
+    // ページ読み込み時に保存データを復元
+    (function () {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", loadState);
+      } else {
+        loadState();
+      }
+    })();
   </script>
 </body>
 </html>
