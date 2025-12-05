@@ -333,6 +333,19 @@
       </div>
     </div>
 
+    <!-- ④ 開発者向け：初期データJSON/JS出力 -->
+    <div class="field" style="margin-top:10px;">
+      <label>④ 開発者向け：初期データJSON/JS出力</label>
+      <textarea id="dev-default-json" placeholder="ここに、今の全データを初期データとして埋め込むためのコードが出てきます"></textarea>
+      <button class="secondary" onclick="exportDefaultJs()">今の全データを『初期データ用コード』として出力</button>
+      <div class="note">
+        すべての過去データを入力し終わったら、このボタンを押してください。<br>
+        下の欄に「const DEFAULT_RAW_DRAWS = [...] ;」というコードが出るので、<br>
+        それをコピーして index.html の DEFAULT_RAW_DRAWS 定義部分と差し替えれば、<br>
+        次回から誰が開いても、その本気データが初期状態として読み込まれます。
+      </div>
+    </div>
+
     <div class="field" style="margin-top:10px;">
       <button class="secondary" onclick="openRakuten()">楽天の過去当せん番号ページを開く</button>
       <div class="note" style="margin-top:4px;">
@@ -361,6 +374,18 @@
     // ===== グローバル（累積データ） =====
     const LOCAL_STORAGE_KEY = "loto6AiLabState_v1";
 
+    // ★ 初期データ（新しい端末で初回アクセスしたときだけ使われる）
+    //   あとから増やしたいときは、この配列に { round, nums, bonus } を追加すればOK
+    const DEFAULT_RAW_DRAWS = [
+      // 例：回号 第1969回 2025/01/30 3 7 12 13 35 38 (24)
+      { round: 1969, nums: [3, 7, 12, 13, 35, 38], bonus: 24 },
+      // 以下は 1641〜1644回のサンプルデータ
+      { round: 1641, nums: [2, 5, 7, 12, 16, 20], bonus: 33 },
+      { round: 1642, nums: [5, 15, 16, 24, 34, 39], bonus: 13 },
+      { round: 1643, nums: [10, 11, 12, 15, 16, 40], bonus: 33 },
+      { round: 1644, nums: [1, 9, 14, 28, 32, 40], bonus: 15 }
+    ];
+
     let lotoHistoryCounts = new Array(44).fill(0); // 1〜43の出現回数（本数字＋ボーナス）
     let lotoHistoryTotal = 0; // 全ての数字の総数（本数字6×回数＋ボーナス）
     // { round: number|null, nums: [6], bonus: number|null, index: number }
@@ -383,43 +408,85 @@
     }
 
     function loadState() {
+      // 1) まず localStorage を優先（すでに使っている端末用）
       try {
         const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (!raw) {
-          renderHistoryTable();
-          updateSummary();
-          return;
-        }
-        const state = JSON.parse(raw);
-        if (!state || !Array.isArray(state.draws) || !Array.isArray(state.counts)) {
-          renderHistoryTable();
-          updateSummary();
-          return;
-        }
+        if (raw) {
+          const state = JSON.parse(raw);
+          if (state && Array.isArray(state.draws) && Array.isArray(state.counts)) {
+            // draws 復元
+            lotoDraws = state.draws
+              .filter(d => d && Array.isArray(d.nums))
+              .map((d, idx) => ({
+                round: (typeof d.round === "number" ? d.round : null),
+                nums: d.nums.map(n => parseInt(n, 10)).filter(n => !isNaN(n)),
+                bonus: (typeof d.bonus === "number" && !isNaN(d.bonus)) ? d.bonus : null,
+                index: (typeof d.index === "number" ? d.index : idx)
+              }));
 
-        // draws 復元
-        lotoDraws = state.draws
-          .filter(d => d && Array.isArray(d.nums))
-          .map((d, idx) => ({
-            round: (typeof d.round === "number" ? d.round : null),
-            nums: d.nums.map(n => parseInt(n, 10)).filter(n => !isNaN(n)),
-            bonus: (typeof d.bonus === "number" && !isNaN(d.bonus)) ? d.bonus : null,
-            index: (typeof d.index === "number" ? d.index : idx)
-          }));
+            // counts 復元
+            lotoHistoryCounts = new Array(44).fill(0);
+            for (let i = 0; i < 44; i++) {
+              if (state.counts && typeof state.counts[i] === "number") {
+                lotoHistoryCounts[i] = state.counts[i];
+              }
+            }
 
-        // counts 復元
-        lotoHistoryCounts = new Array(44).fill(0);
-        for (let i = 0; i < 44; i++) {
-          if (state.counts && typeof state.counts[i] === "number") {
-            lotoHistoryCounts[i] = state.counts[i];
+            lotoHistoryTotal = (typeof state.total === "number" ? state.total : 0);
+            nextIndex = (typeof state.nextIndex === "number" ? state.nextIndex : lotoDraws.length);
+
+            renderHistoryTable();
+            updateSummary();
+            return;
           }
         }
-
-        lotoHistoryTotal = (typeof state.total === "number" ? state.total : 0);
-        nextIndex = (typeof state.nextIndex === "number" ? state.nextIndex : lotoDraws.length);
       } catch (e) {
-        console.error("loadState failed", e);
+        console.error("loadState(localStorage) failed", e);
       }
+
+      // 2) localStorage に何もない新しい端末用：初期データを適用
+      lotoHistoryCounts = new Array(44).fill(0);
+      lotoHistoryTotal = 0;
+      lotoDraws = [];
+      nextIndex = 0;
+
+      if (Array.isArray(DEFAULT_RAW_DRAWS) && DEFAULT_RAW_DRAWS.length > 0) {
+        DEFAULT_RAW_DRAWS.forEach(dRaw => {
+          if (!dRaw || !Array.isArray(dRaw.nums)) return;
+          const numsSorted = dRaw.nums
+            .map(n => parseInt(n, 10))
+            .filter(n => !isNaN(n) && n >= 1 && n <= 43)
+            .slice(0, 6)
+            .sort((a, b) => a - b);
+
+          if (numsSorted.length !== 6) return;
+
+          const bonus = (typeof dRaw.bonus === "number" && dRaw.bonus >= 1 && dRaw.bonus <= 43)
+            ? dRaw.bonus
+            : null;
+
+          const draw = {
+            round: (typeof dRaw.round === "number" ? dRaw.round : null),
+            nums: numsSorted,
+            bonus: bonus,
+            index: nextIndex++
+          };
+          lotoDraws.push(draw);
+
+          numsSorted.forEach(n => {
+            lotoHistoryCounts[n] = (lotoHistoryCounts[n] || 0) + 1;
+            lotoHistoryTotal++;
+          });
+          if (bonus !== null) {
+            lotoHistoryCounts[bonus] = (lotoHistoryCounts[bonus] || 0) + 1;
+            lotoHistoryTotal++;
+          }
+        });
+
+        // 初期データも localStorage に保存しておく（次回以降はここから復元）
+        saveState();
+      }
+
       renderHistoryTable();
       updateSummary();
     }
@@ -879,7 +946,7 @@
 
       renderHistoryTable();
       updateSummary();
-      saveState(); // ★ ここで毎回保存
+      saveState(); // 毎回保存
     }
 
     function renderHistoryTable() {
@@ -1087,6 +1154,33 @@
       text += "少しだけ選ばれやすくなるように重み付けして抽選します。";
 
       summaryElem.textContent = text;
+    }
+
+    // ===== 開発者向け：今の全データから DEFAULT_RAW_DRAWS 用コードを生成 =====
+    function exportDefaultJs() {
+      const ta = document.getElementById("dev-default-json");
+
+      if (!lotoDraws || lotoDraws.length === 0) {
+        ta.value = "// まだ過去データがありません。データを追加してから再度実行してください。";
+        alert("過去データが0件なので出力できません。先にデータを追加してください。");
+        return;
+      }
+
+      // 現在の lotoDraws から、round / nums / bonus だけを抜き出す
+      const arr = lotoDraws.map(d => ({
+        round: (typeof d.round === "number" ? d.round : null),
+        nums: d.nums,
+        bonus: (typeof d.bonus === "number" ? d.bonus : null)
+      }));
+
+      const code =
+        "// ここから下を DEFAULT_RAW_DRAWS の定義部分に貼り付けてください\n" +
+        "const DEFAULT_RAW_DRAWS = " +
+        JSON.stringify(arr, null, 2) +
+        ";\n";
+
+      ta.value = code;
+      alert("今の全データから『初期データ用コード』を生成しました。このテキストをコピーして index.html の DEFAULT_RAW_DRAWS 定義に貼り付けてください。");
     }
 
     // ===== 共通ユーティリティ =====
