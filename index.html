@@ -790,7 +790,7 @@
       return candidates[idx];
     }
 
-    // ===== 過去データ解析（追加＆累積） =====
+        // ===== 過去データ解析（追加＆累積） =====
     function analyzeHistory() {
       const input = document.getElementById("history-input").value;
       const summaryElem = document.getElementById("history-summary");
@@ -807,6 +807,7 @@
       let newDraws = [];
       let foundSomething = false;
 
+      // 4行形式（楽天の「回号 / 抽せん日 / 本数字 / ボーナス数字」）用
       function commitBlock() {
         if (currentMain.length === 6) {
           const numsSorted = currentMain.slice().sort((a, b) => a - b);
@@ -842,6 +843,7 @@
           .replace(/\t/g, " ")
           .replace(/　/g, " ");
 
+        // 一覧形式のヘッダー行（無視）
         if (/^回号\s+抽せん日\s+本数字/i.test(norm)) {
           if (currentMain.length > 0) {
             commitBlock();
@@ -849,52 +851,65 @@
           return;
         }
 
-        if (/第\s*\d+\s*回/.test(norm) && !/^回号/.test(norm) && !/^本数字/.test(norm) && !/^ボーナス数字/.test(norm)) {
+        // ★「第○回 ＋ 数字たくさん…」1行形式（sougaku / 楽天一覧）用
+        if (/第\s*\d+\s*回/.test(norm) &&
+            !/^回号/.test(norm) &&
+            !/^本数字/.test(norm) &&
+            !/^ボーナス数字/.test(norm)) {
+
           foundSomething = true;
           if (currentMain.length > 0) {
             commitBlock();
           }
+
+          // 回号を取得
           let roundNo = null;
           const rm = norm.match(/第\s*(\d+)\s*回/);
           if (rm) {
             roundNo = parseInt(rm[1], 10);
           }
+
+          // 「第○回」に続く 1〜43 の数字を、上から 7 個だけ拾う
           const parts = norm.split(/\s+/);
-          const numsAll = [];
-          parts.forEach(p => {
+          const numsSeq = [];
+          for (let i = 0; i < parts.length; i++) {
+            const p = parts[i];
             const n = parseInt(p, 10);
             if (!isNaN(n) && n >= 1 && n <= 43) {
-              numsAll.push(n);
-            }
-          });
-          if (numsAll.length >= 7) {
-            const bonus = numsAll[numsAll.length - 1];
-            const mains = numsAll.slice(numsAll.length - 7, numsAll.length - 1);
-            if (mains.length === 6) {
-              const numsSorted = mains.slice().sort((a, b) => a - b);
-              const draw = {
-                round: roundNo,
-                nums: numsSorted,
-                bonus: bonus,
-                index: nextIndex++
-              };
-              newDraws.push(draw);
-
-              numsSorted.forEach(n => {
-                if (n >= 1 && n <= 43) {
-                  lotoHistoryCounts[n] = (lotoHistoryCounts[n] || 0) + 1;
-                  lotoHistoryTotal++;
-                }
-              });
-              if (bonus >= 1 && bonus <= 43) {
-                lotoHistoryCounts[bonus] = (lotoHistoryCounts[bonus] || 0) + 1;
-                lotoHistoryTotal++;
-              }
+              numsSeq.push(n);
+              if (numsSeq.length >= 7) break; // 先頭7個で打ち止め
             }
           }
+
+          if (numsSeq.length === 7) {
+            const mains = numsSeq.slice(0, 6);
+            const bonus = numsSeq[6];
+
+            const numsSorted = mains.slice().sort((a, b) => a - b);
+            const draw = {
+              round: roundNo,
+              nums: numsSorted,
+              bonus: bonus,
+              index: nextIndex++
+            };
+            newDraws.push(draw);
+
+            numsSorted.forEach(n => {
+              if (n >= 1 && n <= 43) {
+                lotoHistoryCounts[n] = (lotoHistoryCounts[n] || 0) + 1;
+                lotoHistoryTotal++;
+              }
+            });
+            if (bonus >= 1 && bonus <= 43) {
+              lotoHistoryCounts[bonus] = (lotoHistoryCounts[bonus] || 0) + 1;
+              lotoHistoryTotal++;
+            }
+          }
+
           return;
         }
 
+        // ここから下は「4行形式（回号／抽せん日／本数字／ボーナス数字）」用
         if (norm.startsWith("回号")) {
           if (currentMain.length > 0) {
             commitBlock();
@@ -940,6 +955,7 @@
         return;
       }
 
+      // 新規分をまとめて反映
       newDraws.forEach(draw => lotoDraws.push(draw));
 
       document.getElementById("history-input").value = "";
@@ -948,6 +964,7 @@
       updateSummary();
       saveState(); // 毎回保存
     }
+
 
     function renderHistoryTable() {
       const tbody = document.getElementById("history-table-body");
