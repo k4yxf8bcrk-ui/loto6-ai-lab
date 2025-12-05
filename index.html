@@ -177,6 +177,28 @@
       background: #e6f7ff;
       border-color: #7fb8f2;
     }
+        .slot-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .slot-cell {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #111827;
+      color: #f9fafb;
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      text-align: center;
+      line-height: 28px;
+    }
+    .slot-cell.slot-bonus {
+      background: #e6f7ff;
+      border: 1px solid #7fb8f2;
+      color: #0f172a;
+    }
+
   </style>
 
   <!-- 棒グラフ用 Chart.js 読み込み -->
@@ -273,6 +295,23 @@
       <div class="note">
         【1口目】の右に並んでいる丸い玉が本数字、
         <span class="ball ball-bonus" style="vertical-align:middle;">07</span> のような水色の玉がボーナス候補です。
+      </div>
+    </div>
+    <div class="field" style="margin-top:4px;">
+      <label>スロット演出で1口決定</label>
+      <div class="note">
+        AI解析の重みを使って、本数字6個＋ボーナス候補1個をスロット風に決めます。<br>
+        過去データがない場合は完全ランダム抽選になります。
+      </div>
+      <button type="button" id="loto-slot-btn" onclick="startLotoSlot()">🎰 スロット演出で決定</button>
+      <div class="slot-row" style="margin-top:4px;">
+        <div class="slot-cell" id="slot-main-0">--</div>
+        <div class="slot-cell" id="slot-main-1">--</div>
+        <div class="slot-cell" id="slot-main-2">--</div>
+        <div class="slot-cell" id="slot-main-3">--</div>
+        <div class="slot-cell" id="slot-main-4">--</div>
+        <div class="slot-cell" id="slot-main-5">--</div>
+        <div class="slot-cell slot-bonus" id="slot-bonus">--</div>
       </div>
     </div>
 
@@ -25098,6 +25137,12 @@
 
     // 棒グラフ（Chart.js）のインスタンス
     let freqChart = null;
+        // スロット演出用
+    let slotTimer = null;
+    let slotStep = 0;
+    let slotTargetMain = [];
+    let slotTargetBonus = null;
+
 
     // ----- 保存・読み込み -----
     function saveState() {
@@ -25495,6 +25540,80 @@
       if (candidates.length === 0) return 1;
       const idx = Math.floor(Math.random() * candidates.length);
       return candidates[idx];
+    }
+    // ===== スロット演出で1口決定 =====
+    function startLotoSlot() {
+      const slotMainElems = [];
+      for (let i = 0; i < 6; i++) {
+        slotMainElems.push(document.getElementById("slot-main-" + i));
+      }
+      const bonusElem = document.getElementById("slot-bonus");
+      if (!bonusElem || slotMainElems.some(el => !el)) {
+        console.warn("スロット用の要素が見つかりません。");
+        return;
+      }
+
+      const aiCheckbox = document.getElementById("loto-ai-mode");
+      const aiEnabled = aiCheckbox && aiCheckbox.checked;
+
+      let mainNums;
+      let bonusNum;
+      if (aiEnabled && lotoDraws && lotoDraws.length > 0) {
+        // 過去データがあるとき → AI重みを使った“本気寄り”のセット
+        const aiWeights = computeAiWeights();
+        mainNums = generateSmartLoto6(aiWeights);
+        mainNums = mainNums.slice().sort((a, b) => a - b);
+        bonusNum = generateWeightedBonus(aiWeights, mainNums);
+      } else {
+        // 過去データなし or AIモードOFF → 完全ランダム
+        mainNums = generateRandomLoto6().slice().sort((a, b) => a - b);
+        bonusNum = generateRandomBonus(mainNums);
+      }
+
+      slotTargetMain = mainNums;
+      slotTargetBonus = bonusNum;
+      slotStep = 0;
+      if (slotTimer) {
+        clearTimeout(slotTimer);
+        slotTimer = null;
+      }
+      spinSlotStep();
+    }
+
+    function spinSlotStep() {
+      const maxBase = 20;
+      const delay = 80;
+      let done = true;
+
+      // 本数字6個のスロット
+      for (let i = 0; i < 6; i++) {
+        const cell = document.getElementById("slot-main-" + i);
+        if (!cell) continue;
+        if (slotStep < maxBase + i * 5) {
+          const val = Math.floor(Math.random() * 43) + 1;
+          cell.textContent = pad2(val);
+          done = false;
+        } else if (slotTargetMain && slotTargetMain[i] != null) {
+          cell.textContent = pad2(slotTargetMain[i]);
+        }
+      }
+
+      // ボーナス候補のスロット
+      const bonusElem = document.getElementById("slot-bonus");
+      if (bonusElem) {
+        if (slotStep < maxBase + 6 * 5) {
+          const val = Math.floor(Math.random() * 43) + 1;
+          bonusElem.textContent = pad2(val);
+          done = false;
+        } else if (slotTargetBonus != null) {
+          bonusElem.textContent = pad2(slotTargetBonus);
+        }
+      }
+
+      slotStep++;
+      if (!done) {
+        slotTimer = setTimeout(spinSlotStep, delay);
+      }
     }
 
     // ===== 過去データ解析（追加＆累積） =====
