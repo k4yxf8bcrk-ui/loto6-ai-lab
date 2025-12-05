@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ロト6 AI予想ラボ</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f4f4f4;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 12px;
+      border-radius: 999px;
+      background: #e0e0e0;
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tab.active {
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      font-weight: 600;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
+    .field {
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    input[type="checkbox"] {
+      margin-right: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-top: 4px;
+      cursor: pointer;
+      background: #007aff;
+      color: #ffffff;
+    }
+    button.secondary {
+      background: #555555;
+      margin-top: 8px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .note {
+      font-size: 0.75rem;
+      color: #666;
+      line-height: 1.5;
+    }
+    .hidden {
+      display: none;
+    }
+    .summary-box {
+      font-size: 0.8rem;
+      background: #f7f7f7;
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+    }
+    /* ホームメニュー風 */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .menu-item {
+      border-radius: 12px;
+      padding: 10px;
+      background: linear-gradient(135deg, #fff, #f4f7ff);
+      border: 1px solid #e0e4ff;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .menu-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 0.9rem;
+    }
+    .menu-desc {
+      color: #666;
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+    /* バックナンバー風テーブル */
+    .history-table-wrap {
+      margin-top: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+    table.history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    table.history-table th,
+    table.history-table td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    table.history-table th {
+      background: #fafafa;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    table.history-table tr:nth-child(even) td {
+      background: #fcfcfc;
+    }
+    .ball {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid #ddd;
+      text-align: center;
+      line-height: 24px;
+      margin-right: 3px;
+      margin-bottom: 2px;
+      font-size: 0.75rem;
+      background: #fdfdfd;
+    }
+    .ball-bonus {
+      background: #e6f7ff;
+      border-color: #7fb8f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>ロト6 AI予想ラボ</h1>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-home" onclick="showTab('home')">ホーム</div>
+    <div class="tab" id="tab-loto" onclick="showTab('loto')">ロト6予想</div>
+    <div class="tab" id="tab-analysis" onclick="showTab('analysis')">過去データ解析</div>
+  </div>
+
+  <!-- ホーム -->
+  <div id="panel-home" class="card">
+    <div class="field">
+      <div class="note" style="margin-bottom:8px;">
+        ロト6の過去データを元に、出やすい数字などを“AI風”に解析して予想を作るツールです。<br>
+        ※当選を保証するものではありません。遊びとしてお使いください。
+      </div>
+      <div class="menu-grid">
+        <div class="menu-item" onclick="showTab('loto')">
+          <div class="menu-title">AIおまかせ予想</div>
+          <div class="menu-desc">
+            これまで貯めたバックナンバーの傾向を使って、出やすい数字を少しだけ重くした
+            “AI予想モード”でロト6の組み合わせを自動生成します。
+          </div>
+        </div>
+        <div class="menu-item" onclick="showTab('analysis')">
+          <div class="menu-title">過去データ入力＆解析</div>
+          <div class="menu-desc">
+            「回号/抽せん日/本数字/ボーナス数字」の表形式と、<br>
+            「回号/抽せん日/本数字/ボーナス数字」の4行ブロック形式の両方に対応。
+          </div>
+        </div>
+        <div class="menu-item" onclick="showTab('analysis')">
+          <div class="menu-title">バックナンバー風一覧</div>
+          <div class="menu-desc">
+            追加した回は、回号つきバックナンバー風テーブルに
+            どんどん貯まっていきます（上：新しい、下：古い）。
+          </div>
+        </div>
+        <div class="menu-item" onclick="openRakuten()">
+          <div class="menu-title">公式データを確認</div>
+          <div class="menu-desc">
+            Safariで楽天の「ロト6 過去当せん番号」ページを開きます。
+            必要な回だけコピーしてこのアプリに貼り付けてください。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ロト6予想 -->
+  <div id="panel-loto" class="card hidden">
+    <div class="field">
+      <div>ロト6（1〜43から6個）</div>
+    </div>
+    <div class="field">
+      <label for="loto-count">組み合わせ数（1〜20）</label>
+      <input type="number" id="loto-count" min="1" max="20" value="5" />
+    </div>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="loto-sort" checked />
+        小さい順に並べる
+      </label>
+    </div>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="loto-ai-mode" />
+        AI予想モードを使う（頻出＋直近重視）
+      </label>
+      <div class="note">
+        「過去データ解析」で貯めたバックナンバーから、<br>
+        本数字＋ボーナス数字の出現回数（全期間＋直近30回）を使って重み付け抽選をします。<br>
+        データがない場合は完全ランダムになります。
+      </div>
+    </div>
+    <button onclick="generateLoto()">AIおまかせで予想する</button>
+    <button class="secondary" onclick="copyResult('loto-result')">結果をコピー</button>
+    <div class="field" style="margin-top:8px;">
+      <label>予想結果</label>
+      <textarea id="loto-result" placeholder="ここにロト6の予想結果が表示されます"></textarea>
+    </div>
+    <div class="field" style="margin-top:4px;">
+      <label>AIコメント（なぜこの数字になったかの簡単な説明）</label>
+      <textarea id="loto-comment" placeholder="ここに各口の解説が表示されます"></textarea>
+    </div>
+  </div>
+
+  <!-- 過去データ解析 -->
+  <div id="panel-analysis" class="card hidden">
+    <div class="field">
+      <div style="margin-bottom:6px;">ロト6の過去当せん番号を貼り付けて解析します</div>
+      <div class="note">
+        ▼対応しているコピペ形式①（1回分が4行）<br>
+        回号\t第1969回<br>
+        抽せん日\t2025/01/30<br>
+        本数字\t3\t7\t12\t13\t35\t38<br>
+        ボーナス数字\t(24)<br><br>
+        ▼対応しているコピペ形式②（一覧形式）<br>
+        回号\t抽せん日\t本数字\tボーナス数字<br>
+        第1641回\t2021/11/25\t2\t5\t7\t12\t16\t20\t33<br>
+        第1642回\t2021/11/29\t5\t15\t16\t24\t34\t39\t13<br>
+        第1643回\t2021/12/02\t10\t11\t12\t15\t16\t40\t33<br>
+        第1644回\t2021/12/06\t1\t9\t14\t28\t32\t40\t15<br><br>
+        どちらの形式も混ぜて貼り付けOKです。<br>
+        ボーナス数字も出現回数に含めてAI予想に使います。
+      </div>
+    </div>
+    <div class="field">
+      <label for="history-input">ロト6過去データ入力欄（新しく追加する分だけ貼る）</label>
+      <textarea id="history-input" placeholder="ここに新しく追加する回のデータをコピペしてください"></textarea>
+    </div>
+    <button onclick="analyzeHistory()">このデータを追加してAI解析する（回号つき一覧に貯める）</button>
+
+    <div class="field" style="margin-top:10px;">
+      <div class="note">▼AI解析結果（これまで貯めた全データで集計）</div>
+      <div id="history-summary" class="summary-box"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <div class="note">▼回号つきバックナンバー風一覧（上：新しい／下：古い）</div>
+      <div id="history-table-wrap" class="history-table-wrap hidden">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th style="width:90px;">回号</th>
+              <th>本数字（6個）</th>
+              <th>ボーナス</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        ※同じ回を二重に貼り付けて「追加」すると、二重カウントされます。<br>
+        　同じデータは1回だけ追加するようにしてください。
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <button class="secondary" onclick="openRakuten()">楽天の過去当せん番号ページを開く</button>
+      <div class="note" style="margin-top:4px;">
+        <a href="https://takarakuji.rakuten.co.jp/backnumber/loto6_past/" target="_blank" rel="noopener noreferrer">
+          https://takarakuji.rakuten.co.jp/backnumber/loto6_past/
+        </a>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:8px;">
+      ※この解析は、「よく出ている数字」「連続数字」「引っ張り数字」<br>
+      「奇数偶数比率」「数字の合計」「ブロック別（1〜22／23〜43）」などを<br>
+      簡単に集計するAI風ロジックです。実際の当せん確率が上がる保証はありません。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="note">
+      ・このツールはロト6専用です。<br />
+      ・あくまで統計的な“遊び”としてご利用ください。買い過ぎにはご注意を。<br />
+      ・予想結果は「メモ」アプリやExcelに貼り付けて保存できます。
+    </div>
+  </div>
+
+  <script>
+    // ===== グローバル（累積データ） =====
+    // 1〜43の出現回数（本数字＋ボーナス数字）
+    let lotoHistoryCounts = new Array(44).fill(0);
+    let lotoHistoryTotal = 0; // 全ての数字の総数（本数字6×回数＋ボーナス）
+    // これまで追加された全ての回
+    // { round: number|null, nums: [6], bonus: number|null, index: number }
+    let lotoDraws = [];
+    let nextIndex = 0;
+
+    function showTab(name) {
+      const homePanel = document.getElementById("panel-home");
+      const lotoPanel = document.getElementById("panel-loto");
+      const analysisPanel = document.getElementById("panel-analysis");
+      const tabHome = document.getElementById("tab-home");
+      const tabLoto = document.getElementById("tab-loto");
+      const tabAnalysis = document.getElementById("tab-analysis");
+
+      homePanel.classList.add("hidden");
+      lotoPanel.classList.add("hidden");
+      analysisPanel.classList.add("hidden");
+      tabHome.classList.remove("active");
+      tabLoto.classList.remove("active");
+      tabAnalysis.classList.remove("active");
+
+      if (name === "home") {
+        homePanel.classList.remove("hidden");
+        tabHome.classList.add("active");
+      } else if (name === "loto") {
+        lotoPanel.classList.remove("hidden");
+        tabLoto.classList.add("active");
+      } else {
+        analysisPanel.classList.remove("hidden");
+        tabAnalysis.classList.add("active");
+      }
+    }
+
+    // ===== AI用の重み計算（総出現＋直近30回） =====
+    function computeAiWeights() {
+      const weights = new Array(44).fill(1); // 最低1は持たせる
+
+      // 総出現（すでにlotoHistoryCountsに入っている）
+      for (let n = 1; n <= 43; n++) {
+        const total = lotoHistoryCounts[n] || 0;
+        // 全期間の影響は弱め
+        weights[n] += total * 0.4;
+      }
+
+      // 直近30回の出現カウント（本数字＋ボーナス）
+      const recentCounts = new Array(44).fill(0);
+      const recentWindow = 30;
+      const start = Math.max(0, lotoDraws.length - recentWindow);
+      for (let i = start; i < lotoDraws.length; i++) {
+        const d = lotoDraws[i];
+        if (!d) continue;
+        d.nums.forEach(n => {
+          if (n >= 1 && n <= 43) recentCounts[n]++;
+        });
+        if (d.bonus !== null && d.bonus >= 1 && d.bonus <= 43) {
+          recentCounts[d.bonus]++;
+        }
+      }
+      for (let n = 1; n <= 43; n++) {
+        const r = recentCounts[n] || 0;
+        // 直近は強めに効かせる
+        weights[n] += r * 1.2;
+      }
+
+      return weights;
+    }
+
+    // 頻出TOP10（本数字＋ボーナス）の番号だけ返す
+    function getTopFrequentNumbers(limit = 10) {
+      const items = [];
+      for (let n = 1; n <= 43; n++) {
+        items.push({ num: n, count: lotoHistoryCounts[n] || 0 });
+      }
+      items.sort((a, b) => b.count - a.count);
+      const top = items.filter(x => x.count > 0).slice(0, limit);
+      return top.map(x => x.num);
+    }
+
+    // ===== ロト6予想 =====
+    function generateLoto() {
+      const countInput = document.getElementById("loto-count");
+      const sort = document.getElementById("loto-sort").checked;
+      const useAI = document.getElementById("loto-ai-mode");
+      const resultArea = document.getElementById("loto-result");
+      const commentArea = document.getElementById("loto-comment");
+
+      let count = parseInt(countInput.value, 10);
+      if (isNaN(count) || count < 1) count = 1;
+      if (count > 20) count = 20;
+      countInput.value = count;
+
+      const lines = [];
+      const comments = [];
+
+      const aiEnabled = (useAI && useAI.checked && lotoHistoryTotal > 0);
+      const topNums = getTopFrequentNumbers(10);
+      const topSet = {};
+      topNums.forEach(n => { topSet[n] = true; });
+
+      const aiWeights = aiEnabled ? computeAiWeights() : null;
+
+      for (let i = 0; i < count; i++) {
+        let nums;
+        if (aiEnabled) {
+          nums = generateSmartLoto6(aiWeights);
+        } else {
+          nums = generateRandomLoto6();
+        }
+        if (sort) {
+          nums.sort(function(a, b) { return a - b; });
+        }
+        const line = nums.map(n => String(n).padStart(2, "0")).join(" ");
+        lines.push(line);
+
+        // コメント生成
+        let cmt = "【" + (i + 1) + "口目】";
+        if (aiEnabled) {
+          const strong = nums.filter(n => topSet[n]);
+          const sum = nums.reduce((a, b) => a + b, 0);
+          let odd = 0, even = 0;
+          nums.forEach(n => { if (n % 2 === 0) even++; else odd++; });
+
+          if (strong.length > 0) {
+            cmt += "頻出数字: " +
+              strong.map(n => String(n).padStart(2, "0")).join(", ") + " / ";
+          } else {
+            cmt += "頻出数字は少なめ / ";
+          }
+          cmt += "合計: " + sum + " / 奇数" + odd + "・偶数" + even + " / ";
+          cmt += "全期間＋直近30回の出現回数を重み付けしたAI抽選";
+        } else {
+          cmt += "AI解析データを使わず、完全ランダムで生成";
+        }
+        comments.push(cmt);
+      }
+
+      resultArea.value = lines.join("\n");
+      commentArea.value = comments.join("\n");
+    }
+
+    // 条件付きAIロト6生成
+    function generateSmartLoto6(aiWeights) {
+      // ある程度制約に合うまで試行
+      let best = null;
+      let bestScore = -1;
+
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const nums = generateWeightedLoto6Once(aiWeights);
+        const score = evaluateCombination(nums);
+        if (score > bestScore) {
+          bestScore = score;
+          best = nums;
+        }
+        if (score >= 1.0) {
+          // 十分条件を満たしたら即採用
+          return nums;
+        }
+      }
+      return best || generateWeightedLoto6Once(aiWeights);
+    }
+
+    // 組み合わせの評価（1.0以上で「かなりいい」）
+    function evaluateCombination(nums) {
+      // 基本情報
+      const sum = nums.reduce((a, b) => a + b, 0);
+      let odd = 0, even = 0;
+      let small = 0, large = 0; // 1〜22 / 23〜43
+      nums.forEach(n => {
+        if (n % 2 === 0) even++; else odd++;
+        if (n <= 22) small++; else large++;
+      });
+
+      let score = 0;
+
+      // 合計値 100〜180 を高評価
+      if (sum >= 100 && sum <= 180) score += 0.5;
+      else if (sum >= 80 && sum <= 200) score += 0.2;
+
+      // 奇数・偶数のバランス（2:4,3:3,4:2あたり）
+      const pattern = odd + ":" + even;
+      if (pattern === "3:3" || pattern === "2:4" || pattern === "4:2") score += 0.4;
+      else score += 0.1;
+
+      // 小・大のバランス
+      const sb = small + ":" + large;
+      if (sb === "3:3" || sb === "2:4" || sb === "4:2") score += 0.3;
+      else score += 0.1;
+
+      return score;
+    }
+
+    function generateRandomLoto6() {
+      const nums = [];
+      while (nums.length < 6) {
+        const n = Math.floor(Math.random() * 43) + 1; // 1〜43
+        if (!nums.includes(n)) nums.push(n);
+      }
+      return nums;
+    }
+
+    // 一回分の重み付きロト6（本数字＋ボーナスの出現カウントから計算した重みを使用）
+    function generateWeightedLoto6Once(aiWeights) {
+      const available = [];
+      for (let n = 1; n <= 43; n++) {
+        available.push(n);
+      }
+      const result = [];
+
+      while (result.length < 6 && available.length > 0) {
+        let totalWeight = 0;
+        const weights = [];
+        for (let i = 0; i < available.length; i++) {
+          const num = available[i];
+          const w = aiWeights[num] || 1;
+          weights.push(w);
+          totalWeight += w;
+        }
+        let r = Math.random() * totalWeight;
+        let chosenIndex = 0;
+        for (let i = 0; i < available.length; i++) {
+          r -= weights[i];
+          if (r <= 0) {
+            chosenIndex = i;
+            break;
+          }
+        }
+        const chosenNum = available[chosenIndex];
+        result.push(chosenNum);
+        available.splice(chosenIndex, 1);
+      }
+      return result;
+    }
+
+    // ===== 過去データ解析（追加＆累積） =====
+    function analyzeHistory() {
+      const input = document.getElementById("history-input").value;
+      const summaryElem = document.getElementById("history-summary");
+
+      if (!input.trim()) {
+        summaryElem.textContent = "新しく追加するデータが入力されていません。";
+        return;
+      }
+
+      const lines = input.split(/\r?\n/);
+      let currentRound = null;
+      let currentMain = [];
+      let currentBonus = null;
+      let newDraws = [];
+      let foundSomething = false;
+
+      function commitBlock() {
+        if (currentMain.length === 6) {
+          const numsSorted = currentMain.slice().sort((a, b) => a - b);
+          const draw = {
+            round: currentRound,
+            nums: numsSorted,
+            bonus: (currentBonus !== null && !isNaN(currentBonus)) ? currentBonus : null,
+            index: nextIndex++
+          };
+          newDraws.push(draw);
+
+          // カウント更新（本数字＋ボーナス）
+          numsSorted.forEach(n => {
+            if (n >= 1 && n <= 43) {
+              lotoHistoryCounts[n] = (lotoHistoryCounts[n] || 0) + 1;
+              lotoHistoryTotal++;
+            }
+          });
+          if (draw.bonus !== null && draw.bonus >= 1 && draw.bonus <= 43) {
+            lotoHistoryCounts[draw.bonus] = (lotoHistoryCounts[draw.bonus] || 0) + 1;
+            lotoHistoryTotal++;
+          }
+        }
+        currentRound = null;
+        currentMain = [];
+        currentBonus = null;
+      }
+
+      lines.forEach(rawLine => {
+        const line = rawLine.trim();
+        if (!line) return;
+
+        // タブや全角スペースを半角スペースに
+        const norm = line
+          .replace(/\t/g, " ")
+          .replace(/　/g, " ");
+
+        // 一覧形式のヘッダー行（回号 抽せん日 本数字 ボーナス数字）はスキップ
+        if (/^回号\s+抽せん日\s+本数字/i.test(norm)) {
+          // 途中で4行ブロックがあれば確定
+          if (currentMain.length > 0) {
+            commitBlock();
+          }
+          return;
+        }
+
+        // 一覧形式の1行（第1641回 2021/11/25 2 5 7 12 16 20 33 みたいな）
+        if (/第\s*\d+\s*回/.test(norm) && !/^回号/.test(norm) && !/^本数字/.test(norm) && !/^ボーナス数字/.test(norm)) {
+          foundSomething = true;
+          // 途中の4行ブロックがあれば確定
+          if (currentMain.length > 0) {
+            commitBlock();
+          }
+          let roundNo = null;
+          const rm = norm.match(/第\s*(\d+)\s*回/);
+          if (rm) {
+            roundNo = parseInt(rm[1], 10);
+          }
+          const parts = norm.split(/\s+/);
+          const numsAll = [];
+          parts.forEach(p => {
+            const n = parseInt(p, 10);
+            if (!isNaN(n) && n >= 1 && n <= 43) {
+              numsAll.push(n);
+            }
+          });
+          if (numsAll.length >= 7) {
+            const bonus = numsAll[numsAll.length - 1];
+            const mains = numsAll.slice(numsAll.length - 7, numsAll.length - 1);
+            if (mains.length === 6) {
+              const numsSorted = mains.slice().sort((a, b) => a - b);
+              const draw = {
+                round: roundNo,
+                nums: numsSorted,
+                bonus: bonus,
+                index: nextIndex++
+              };
+              newDraws.push(draw);
+
+              // カウント更新
+              numsSorted.forEach(n => {
+                if (n >= 1 && n <= 43) {
+                  lotoHistoryCounts[n] = (lotoHistoryCounts[n] || 0) + 1;
+                  lotoHistoryTotal++;
+                }
+              });
+              if (bonus >= 1 && bonus <= 43) {
+                lotoHistoryCounts[bonus] = (lotoHistoryCounts[bonus] || 0) + 1;
+                lotoHistoryTotal++;
+              }
+            }
+          }
+          return;
+        }
+
+        // ここから4行ブロック形式
+        if (norm.startsWith("回号")) {
+          // 途中まで溜まっていたブロックがあれば確定
+          if (currentMain.length > 0) {
+            commitBlock();
+          }
+          foundSomething = true;
+          currentRound = null;
+          const m = norm.match(/(\d+)/);
+          if (m) {
+            currentRound = parseInt(m[1], 10);
+          }
+          return;
+        }
+
+        if (norm.startsWith("本数字")) {
+          foundSomething = true;
+          currentMain = [];
+          const parts = norm.split(/\s+/).slice(1); // 「本数字」を除いて数字部分だけ
+          parts.forEach(p => {
+            const n = parseInt(p, 10);
+            if (!isNaN(n) && n >= 1 && n <= 43 && currentMain.length < 6) {
+              currentMain.push(n);
+            }
+          });
+          return;
+        }
+
+        if (norm.startsWith("ボーナス数字")) {
+          foundSomething = true;
+          const m = norm.replace(/[()（）]/g, " ").match(/(\d+)/);
+          if (m) {
+            currentBonus = parseInt(m[1], 10);
+          }
+          return;
+        }
+
+        // 抽せん日などその他の行は無視
+      });
+
+      // 最後の4行ブロックが残っていれば確定
+      if (currentMain.length > 0) {
+        commitBlock();
+      }
+
+      if (!foundSomething || newDraws.length === 0) {
+        summaryElem.textContent = "対応形式として認識できるデータがありませんでした。入力形式を確認してください。";
+        return;
+      }
+
+      // グローバル配列に追加
+      newDraws.forEach(draw => lotoDraws.push(draw));
+
+      // 入力欄クリア
+      document.getElementById("history-input").value = "";
+
+      // テーブル再描画（上：新しい／下：古い）
+      renderHistoryTable();
+
+      // サマリー再計算
+      updateSummary();
+    }
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById("history-table-body");
+      const wrap = document.getElementById("history-table-wrap");
+
+      tbody.innerHTML = "";
+      if (lotoDraws.length === 0) {
+        wrap.classList.add("hidden");
+        return;
+      }
+
+      // 上が新しい、下が古いになるようにソート
+      const sorted = lotoDraws.slice().sort((a, b) => {
+        if (a.round !== null && b.round !== null && a.round !== b.round) {
+          return b.round - a.round; // round大きい＝新しい
+        }
+        return b.index - a.index; // round不明なら追加順
+      });
+
+      sorted.forEach(draw => {
+        const tr = document.createElement("tr");
+
+        const tdRound = document.createElement("td");
+        if (draw.round !== null && !isNaN(draw.round)) {
+          tdRound.textContent = "第" + draw.round + "回";
+        } else {
+          tdRound.textContent = "No." + (draw.index + 1);
+        }
+        tr.appendChild(tdRound);
+
+        const tdNums = document.createElement("td");
+        draw.nums.forEach(n => {
+          const span = document.createElement("span");
+          span.className = "ball";
+          span.textContent = String(n).padStart(2, "0");
+          tdNums.appendChild(span);
+        });
+        tr.appendChild(tdNums);
+
+        const tdBonus = document.createElement("td");
+        if (draw.bonus !== null && !isNaN(draw.bonus)) {
+          const spanB = document.createElement("span");
+          spanB.className = "ball ball-bonus";
+          spanB.textContent = String(draw.bonus).padStart(2, "0");
+          tdBonus.appendChild(spanB);
+        } else {
+          tdBonus.textContent = "-";
+        }
+        tr.appendChild(tdBonus);
+
+        tbody.appendChild(tr);
+      });
+
+      wrap.classList.remove("hidden");
+    }
+
+    function updateSummary() {
+      const summaryElem = document.getElementById("history-summary");
+
+      const items = [];
+      for (let n = 1; n <= 43; n++) {
+        items.push({ num: n, count: lotoHistoryCounts[n] || 0 });
+      }
+      items.sort((a, b) => b.count - a.count);
+      const top = items.slice(0, 10);
+      const bottom = items.slice(-10).filter(x => x.count > 0);
+      const never = items.filter(x => x.count === 0).map(x => x.num);
+
+      // 連続数字・引っ張り数字・奇数偶数・合計・ブロック別（本数字6個ベース）
+      let drawsWithConsecutive = 0;
+      const consecutivePairCounts = {};
+      let drawsWithPull = 0;
+      const pullCounts = {};
+
+      let oddTotal = 0;
+      let evenTotal = 0;
+      const sumRanges = { low: 0, mid: 0, high: 0, veryhigh: 0 };
+      const blockCounts = { b1: 0, b2: 0, b3: 0, b4: 0 };
+
+      for (let i = 0; i < lotoDraws.length; i++) {
+        const nums = lotoDraws[i].nums;
+        let s = 0;
+        let hasConsecutive = false;
+
+        for (let j = 0; j < nums.length; j++) {
+          const n = nums[j];
+          s += n;
+          if (n % 2 === 0) evenTotal++; else oddTotal++;
+          if (n >= 1 && n <= 10) blockCounts.b1++;
+          else if (n >= 11 && n <= 22) blockCounts.b2++;
+          else if (n >= 23 && n <= 33) blockCounts.b3++;
+          else blockCounts.b4++;
+        }
+
+        for (let j = 0; j < nums.length - 1; j++) {
+          if (nums[j + 1] === nums[j] + 1) {
+            hasConsecutive = true;
+            const key = nums[j] + "-" + nums[j + 1];
+            consecutivePairCounts[key] = (consecutivePairCounts[key] || 0) + 1;
+          }
+        }
+        if (hasConsecutive) drawsWithConsecutive++;
+
+        if (s <= 120) sumRanges.low++;
+        else if (s <= 180) sumRanges.mid++;
+        else if (s <= 240) sumRanges.high++;
+        else sumRanges.veryhigh++;
+
+        if (i > 0) {
+          const prev = lotoDraws[i - 1].nums;
+          const prevSet = {};
+          prev.forEach(n => prevSet[n] = true);
+          let hasPull = false;
+          nums.forEach(n => {
+            if (prevSet[n]) {
+              hasPull = true;
+              pullCounts[n] = (pullCounts[n] || 0) + 1;
+            }
+          });
+          if (hasPull) drawsWithPull++;
+        }
+      }
+
+      const consecutiveItems = Object.keys(consecutivePairCounts).map(key => ({
+        pair: key,
+        count: consecutivePairCounts[key]
+      })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+      const pullItems = Object.keys(pullCounts).map(num => ({
+        num: parseInt(num, 10),
+        count: pullCounts[num]
+      })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+      const totalDraws = lotoDraws.length;
+      const totalNumsMain = totalDraws * 6;
+      let text = "";
+
+      text += "◆解析サマリー（これまで追加した全データ）\n";
+      text += "対象回数: " + totalDraws + " 回\n";
+      text += "出現カウント対象: 本数字 + ボーナス数字（AI予想の重み付け）\n";
+
+      text += "\n▼出現回数 上位10数字（よく出ている：本数字＋ボーナス）\n";
+      top.forEach(x => {
+        text += String(x.num).padStart(2, "0") + " : " + x.count + " 回\n";
+      });
+
+      if (bottom.length > 0) {
+        text += "\n▼出現回数 下位の数字（あまり出ていないが一応出ている）\n";
+        bottom.forEach(x => {
+          text += String(x.num).padStart(2, "0") + " : " + x.count + " 回\n";
+        });
+      }
+
+      if (never.length > 0) {
+        text += "\n▼一度も出ていない数字（このデータ範囲内）\n";
+        const chunks = [];
+        for (let i = 0; i < never.length; i += 10) {
+          const part = never.slice(i, i + 10).map(n => String(n).padStart(2, "0")).join(" ");
+          chunks.push(part);
+        }
+        text += chunks.join("\n") + "\n";
+      }
+
+      if (totalDraws > 0) {
+        const consecPct = (drawsWithConsecutive * 100 / totalDraws).toFixed(1);
+        const pullPct = (drawsWithPull * 100 / totalDraws).toFixed(1);
+        text += "\n▼連続数字（n, n+1 が含まれる回）\n";
+        text += "連続数字を含む回: " + drawsWithConsecutive + " 回（" + consecPct + "%）\n";
+        if (consecutiveItems.length > 0) {
+          text += "よく出る連続ペア 上位:\n";
+          consecutiveItems.forEach(item => {
+            text += " " + item.pair + " : " + item.count + " 回\n";
+          });
+        }
+
+        text += "\n▼引っ張り数字（前回から続けて出た数字：本数字のみ）\n";
+        text += "引っ張り数字を含む回: " + drawsWithPull + " 回（" + pullPct + "%）\n";
+        if (pullItems.length > 0) {
+          text += "よく引っ張られている数字 上位:\n";
+          pullItems.forEach(item => {
+            text += " " + String(item.num).padStart(2, "0") + " : " + item.count + " 回\n";
+          });
+        }
+
+        const oddPct = (oddTotal * 100 / totalNumsMain).toFixed(1);
+        const evenPct = (evenTotal * 100 / totalNumsMain).toFixed(1);
+        text += "\n▼奇数・偶数の比率（本数字6個ベース）\n";
+        text += "奇数: " + oddTotal + " 個（" + oddPct + "%）\n";
+        text += "偶数: " + evenTotal + " 個（" + evenPct + "%）\n";
+
+        text += "\n▼合計値の傾向（本数字6個の合計）\n";
+        text += "60〜120: " + sumRanges.low + " 回\n";
+        text += "121〜180: " + sumRanges.mid + " 回\n";
+        text += "181〜240: " + sumRanges.high + " 回\n";
+        text += "241以上: " + sumRanges.veryhigh + " 回\n";
+
+        text += "\n▼ブロック別の出現（本数字のみ）\n";
+        text += "1〜10:  " + blockCounts.b1 + " 個\n";
+        text += "11〜22: " + blockCounts.b2 + " 個\n";
+        text += "23〜33: " + blockCounts.b3 + " 個\n";
+        text += "34〜43: " + blockCounts.b4 + " 個\n";
+      }
+
+      text += "\nこの解析結果をもとに、「ロト6予想」タブでAI予想モードをONにすると、\n";
+      text += "本数字＋ボーナス数字の出現回数（全期間＋直近30回）が多い数字ほど\n";
+      text += "少しだけ選ばれやすくなるように重み付けして抽選します。";
+
+      summaryElem.textContent = text;
+    }
+
+    // ===== 共通ユーティリティ =====
+    function copyResult(textareaId) {
+      const ta = document.getElementById(textareaId);
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      alert("結果をコピーしました。メモ等に貼り付けてください。");
+    }
+
+    function openRakuten() {
+      window.open("https://takarakuji.rakuten.co.jp/backnumber/loto6_past/", "_blank");
+    }
+  </script>
+</body>
+</html>
