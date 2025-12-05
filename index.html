@@ -252,9 +252,8 @@
         AI予想モードを使う（頻出＋直近重視）
       </label>
       <div class="note">
-        「過去データ解析」で貯めたバックナンバーから、<br>
-        本数字＋ボーナス数字の出現回数（全期間＋直近30回）を使って重み付け抽選をします。<br>
-        データがない場合は完全ランダムになります。
+        AI予想モードでは、蓄積された全バックナンバーを「学習データ」として扱い、各数字の長期的な出現頻度と直近30回前後のトレンドを同時に解析します。人工知能の深層学習をイメージした重み付き確率モデルにより、よく出ている数字や最近になって出現が増えている数字の重みを高め、ランダム抽選にバイアスをかけて本数字6個＋ボーナス候補1個を自動生成します。統計的な傾向を最大限に反映した“AI風予想エンジン”ですが、あくまでも遊び用の解析機能であり、当せんを保証するものではありません。<br>
+        過去データが一件も登録されていない場合は、通常の完全ランダム抽選となります。
       </div>
     </div>
     <button onclick="generateLoto()">AIおまかせで予想する</button>
@@ -603,7 +602,7 @@
       for (let attempt = 0; attempt < 40; attempt++) {
         const nums = generateWeightedLoto6Once(aiWeights);
         const score = evaluateCombination(nums);
-        if (score > bestScore) {
+        if (best === null || score > bestScore) {
           bestScore = score;
           best = nums;
         }
