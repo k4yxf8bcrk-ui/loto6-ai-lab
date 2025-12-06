@@ -193,6 +193,29 @@
       text-align: center;
       line-height: 28px;
     }
+    /* スロット停止時のポンッと弾む演出 */
+.slot-cell.slot-hit {
+  animation: slot-hit-pop 0.25s ease-out;
+}
+
+@keyframes slot-hit-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* スロット中はボタンを半透明に */
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
     .slot-cell.slot-bonus {
       background: #e6f7ff;
       border: 1px solid #7fb8f2;
@@ -25195,6 +25218,8 @@
     let slotStep = 0;
     let slotTargetMain = [];
     let slotTargetBonus = null;
+    let slotFixedFlags = new Array(7).fill(false); // 0〜5:本数字, 6:ボーナス
+
 
     // ----- 保存・読み込み -----
     function saveState() {
@@ -25660,76 +25685,122 @@ cmt += "ボーナス候補: " + pad2(bonus);
       return candidates[idx];
     }
 
-    // ===== スロット演出で1口決定 =====
-    function startLotoSlot() {
-      const slotMainElems = [];
-      for (let i = 0; i < 6; i++) {
-        slotMainElems.push(document.getElementById("slot-main-" + i));
-      }
-      const bonusElem = document.getElementById("slot-bonus");
-      if (!bonusElem || slotMainElems.some(el => !el)) {
-        console.warn("スロット用の要素が見つかりません。");
-        return;
-      }
+    // ===== スロット演出で1口決定（本物スロット風） =====
+function startLotoSlot() {
+  const slotMainElems = [];
+  for (let i = 0; i < 6; i++) {
+    slotMainElems.push(document.getElementById("slot-main-" + i));
+  }
+  const bonusElem = document.getElementById("slot-bonus");
+  if (!bonusElem || slotMainElems.some(el => !el)) {
+    console.warn("スロット用の要素が見つかりません。");
+    return;
+  }
 
-      const aiCheckbox = document.getElementById("loto-ai-mode");
-      const aiEnabled = aiCheckbox && aiCheckbox.checked;
+  // ボタン連打防止：押したら一旦無効化
+  const btn = document.getElementById("loto-slot-btn");
+  if (btn) {
+    btn.disabled = true;
+  }
 
-      let mainNums;
-      let bonusNum;
-      if (aiEnabled && lotoDraws && lotoDraws.length > 0) {
-        const aiWeights = computeAiWeights();
-        mainNums = generateSmartLoto6(aiWeights);
-        mainNums = mainNums.slice().sort((a, b) => a - b);
-        bonusNum = generateWeightedBonus(aiWeights, mainNums);
-      } else {
-        mainNums = generateRandomLoto6().slice().sort((a, b) => a - b);
-        bonusNum = generateRandomBonus(mainNums);
-      }
+  const aiCheckbox = document.getElementById("loto-ai-mode");
+  const aiEnabled = aiCheckbox && aiCheckbox.checked;
 
-      slotTargetMain = mainNums;
-      slotTargetBonus = bonusNum;
-      slotStep = 0;
-      if (slotTimer) {
-        clearTimeout(slotTimer);
-        slotTimer = null;
+  let mainNums;
+  let bonusNum;
+  if (aiEnabled && lotoDraws && lotoDraws.length > 0) {
+    // 過去データあり → AI重みを使った本気寄りセット
+    const aiWeights = computeAiWeights();
+    mainNums = generateSmartLoto6(aiWeights);
+    mainNums = mainNums.slice().sort((a, b) => a - b);
+    bonusNum = generateWeightedBonus(aiWeights, mainNums);
+  } else {
+    // 過去データなし or AIモードOFF → 完全ランダム
+    mainNums = generateRandomLoto6().slice().sort((a, b) => a - b);
+    bonusNum = generateRandomBonus(mainNums);
+  }
+
+  slotTargetMain = mainNums;
+  slotTargetBonus = bonusNum;
+  slotStep = 0;
+  slotFixedFlags = new Array(7).fill(false);
+
+  if (slotTimer) {
+    clearTimeout(slotTimer);
+    slotTimer = null;
+  }
+
+  spinSlotStep();
+}
+
+function spinSlotStep() {
+  const baseStop = 25;        // 一番左のリールが止まり始めるステップ
+  const perReelExtra = 6;     // 右に行くほど、止まるのを少し遅らせる
+  const bonusExtra = 10;      // ボーナスはさらにタメを作る
+
+  let done = true;
+
+  // 本数字 6リール分
+  for (let i = 0; i < 6; i++) {
+    const cell = document.getElementById("slot-main-" + i);
+    if (!cell) continue;
+
+    const stopStep = baseStop + i * perReelExtra;
+
+    if (slotStep < stopStep) {
+      // まだ回転中 → ランダム数字を表示
+      const val = Math.floor(Math.random() * 43) + 1;
+      cell.textContent = pad2(val);
+      done = false;
+    } else {
+      // もう止めるステップ → 目標値で固定（初回だけポンッと弾ませる）
+      if (!slotFixedFlags[i] && slotTargetMain && slotTargetMain[i] != null) {
+        cell.textContent = pad2(slotTargetMain[i]);
+        cell.classList.add("slot-hit");
+        setTimeout(() => {
+          cell.classList.remove("slot-hit");
+        }, 260);
+        slotFixedFlags[i] = true;
       }
-      spinSlotStep();
     }
+  }
 
-    function spinSlotStep() {
-      const maxBase = 20;
-      const delay = 80;
-      let done = true;
-
-      for (let i = 0; i < 6; i++) {
-        const cell = document.getElementById("slot-main-" + i);
-        if (!cell) continue;
-        if (slotStep < maxBase + i * 5) {
-          const val = Math.floor(Math.random() * 43) + 1;
-          cell.textContent = pad2(val);
-          done = false;
-        } else if (slotTargetMain && slotTargetMain[i] != null) {
-          cell.textContent = pad2(slotTargetMain[i]);
-        }
-      }
-
-      const bonusElem = document.getElementById("slot-bonus");
-      if (bonusElem) {
-        if (slotStep < maxBase + 6 * 5) {
-          const val = Math.floor(Math.random() * 43) + 1;
-          bonusElem.textContent = pad2(val);
-          done = false;
-        } else if (slotTargetBonus != null) {
-          bonusElem.textContent = pad2(slotTargetBonus);
-        }
-      }
-
-      slotStep++;
-      if (!done) {
-        slotTimer = setTimeout(spinSlotStep, delay);
+  // ボーナスリール（右端）
+  const bonusElem = document.getElementById("slot-bonus");
+  if (bonusElem) {
+    const bonusStopStep = baseStop + 6 * perReelExtra + bonusExtra;
+    if (slotStep < bonusStopStep) {
+      const val = Math.floor(Math.random() * 43) + 1;
+      bonusElem.textContent = pad2(val);
+      done = false;
+    } else {
+      if (!slotFixedFlags[6] && slotTargetBonus != null) {
+        bonusElem.textContent = pad2(slotTargetBonus);
+        bonusElem.classList.add("slot-hit");
+        setTimeout(() => {
+          bonusElem.classList.remove("slot-hit");
+        }, 260);
+        slotFixedFlags[6] = true;
       }
     }
+  }
+
+  slotStep++;
+
+  if (!done) {
+    // 最初は速く、だんだん遅くする（本物スロットっぽい加減速）
+    const delay = 40 + Math.min(slotStep * 8, 260);
+    slotTimer = setTimeout(spinSlotStep, delay);
+  } else {
+    // 全部止まったらボタン復活
+    const btn = document.getElementById("loto-slot-btn");
+    if (btn) {
+      btn.disabled = false;
+    }
+    slotTimer = null;
+  }
+}
+
 
     // ===== 過去データ解析（追加＆累積） =====
     function analyzeHistory() {
