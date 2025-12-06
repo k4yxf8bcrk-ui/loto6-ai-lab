@@ -25436,13 +25436,16 @@
           displayMain.forEach(n => { if (n % 2 === 0) even++; else odd++; });
 
           if (strong.length > 0) {
-            cmt += "頻出数字: " + strong.map(n => pad2(n)).join(", ") + " / ";
-          } else {
-            cmt += "頻出数字は少なめ / ";
-          }
-          cmt += "合計: " + sum + " / 奇数" + odd + "・偶数" + even + " / ";
-          cmt += "全期間＋直近30回の出現回数を重み付けしたAI抽選 / ";
-          cmt += "ボーナス候補: " + pad2(bonus);
+  // 金ボール（頻出上位の数字）の解説
+  cmt += "頻出数字（金ボール）: " + strong.map(n => pad2(n)).join(", ") + " / ";
+} else {
+  cmt += "頻出数字（金ボール）は少なめ / ";
+}
+
+cmt += "合計値: " + sum + " / 奇数" + odd + "・偶数" + even + " の構成 / ";
+cmt += "全期間＋直近30回の出現回数からAIが重み付けして抽選 / ";
+cmt += "ボーナス候補: " + pad2(bonus);
+
         } else {
           cmt += "AI解析データを使わず、完全ランダムで生成（ボーナス候補も含む）";
         }
