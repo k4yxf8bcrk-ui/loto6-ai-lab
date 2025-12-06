@@ -26107,67 +26107,123 @@ cmt += "ボーナス候補: " + pad2(bonus);
     }
 
     function updateFrequencyChart() {
-      const canvas = document.getElementById("freqChart");
-      if (!canvas) return;
+  const canvas = document.getElementById("freqChart");
+  if (!canvas) return;
 
-      const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
 
-      const labels = [];
-      const data = [];
-      for (let n = 1; n <= 43; n++) {
-        labels.push(String(n).padStart(2, "0"));
-        data.push(lotoHistoryCounts[n] || 0);
-      }
+  // 横軸ラベル＆トータル出現回数（本数字＋ボーナス）
+  const labels = [];
+  const data = [];
+  for (let n = 1; n <= 43; n++) {
+    labels.push(String(n).padStart(2, "0"));
+    data.push(lotoHistoryCounts[n] || 0);
+  }
 
-      const total = data.reduce((a, b) => a + b, 0);
-      if (total === 0) {
-        if (freqChart) {
-          freqChart.data.datasets[0].data = data;
-          freqChart.update();
-        }
-        return;
-      }
-
-      if (!freqChart) {
-        freqChart = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: "出現回数（本数字＋ボーナス）",
-                data: data
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: {
-                ticks: {
-                  maxRotation: 0,
-                  autoSkip: true,
-                  maxTicksLimit: 15
-                }
-              },
-              y: {
-                beginAtZero: true,
-                precision: 0
-              }
-            },
-            plugins: {
-              legend: {
-                display: false
-              }
-            }
-          }
-        });
-      } else {
-        freqChart.data.datasets[0].data = data;
-        freqChart.update();
-      }
+  const total = data.reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    if (freqChart) {
+      freqChart.data.datasets[0].data = data;
+      freqChart.update();
     }
+    return;
+  }
+
+  // ── 直近30回の出現回数を計算 ─────────────────────
+  const recentCounts = new Array(44).fill(0);
+  const recentWindow = 30;
+  const start = Math.max(0, lotoDraws.length - recentWindow);
+
+  for (let i = start; i < lotoDraws.length; i++) {
+    const d = lotoDraws[i];
+    if (!d) continue;
+
+    // 本数字
+    d.nums.forEach(n => {
+      if (n >= 1 && n <= 43) recentCounts[n]++;
+    });
+    // ボーナスもカウントに含める
+    if (d.bonus != null && d.bonus >= 1 && d.bonus <= 43) {
+      recentCounts[d.bonus]++;
+    }
+  }
+
+  // 「直近30回でよく出ている順」に並べて上位10本をホット扱い
+  const recentList = [];
+  for (let n = 1; n <= 43; n++) {
+    recentList.push({ num: n, recent: recentCounts[n] || 0 });
+  }
+  recentList.sort((a, b) => b.recent - a.recent);
+  const topRecent = recentList.filter(x => x.recent > 0).slice(0, 10);
+
+  const hotSet = {};
+  topRecent.forEach(x => {
+    hotSet[x.num] = true;
+  });
+
+  // ── 棒グラフの色を決める ────────────────────────
+  const bgColors = [];
+  const borderColors = [];
+  for (let n = 1; n <= 43; n++) {
+    if (hotSet[n]) {
+      // 直近30回で出現回数が多いホット数字 → オレンジ系
+      bgColors.push("rgba(251, 146, 60, 0.95)");   // オレンジ
+      borderColors.push("rgba(194, 65, 12, 1)");
+    } else {
+      // それ以外 → 落ち着いたグレー系
+      bgColors.push("rgba(148, 163, 184, 0.7)");
+      borderColors.push("rgba(148, 163, 184, 1)");
+    }
+  }
+
+  // ── Chart.js 描画 ────────────────────────────────
+  if (!freqChart) {
+    freqChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "出現回数（本数字＋ボーナス）",
+            data: data,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 15
+            }
+          },
+          y: {
+            beginAtZero: true,
+            precision: 0
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  } else {
+    freqChart.data.labels = labels;
+    freqChart.data.datasets[0].data = data;
+    freqChart.data.datasets[0].backgroundColor = bgColors;
+    freqChart.data.datasets[0].borderColor = borderColors;
+    freqChart.update();
+  }
+}
+
 
     // ===== 開発者向け：今の全データから DEFAULT_RAW_DRAWS 用コードを生成 =====
     function exportDefaultJs() {
