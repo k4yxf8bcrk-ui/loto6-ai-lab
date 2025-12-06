@@ -235,8 +235,8 @@
             AI解析＋下のバックナンバー一覧に反映されます。
           </div>
         </div>
-        <div class="menu-item" onclick="showTab('analysis')">
-          <div class="menu-title">③ バックナンバー一覧を見る</div>
+        <div class="menu-item" onclick="goToHistoryList()">
+  <div class="menu-title">③ バックナンバー一覧を見る</div>
           <div class="menu-desc">
             「過去データ解析」タブの一番下に、これまで追加した回が<br>
             回号つきバックナンバー風テーブルで貯まっていきます。
@@ -365,8 +365,8 @@
       </div>
     </div>
 
-    <div class="field" style="margin-top:10px;">
-      <div class="note">③ バックナンバー一覧（回号つき／上：新しい・下：古い）</div>
+    <div class="field" id="history-list-section" style="margin-top:10px;">
+  <div class="note">③ バックナンバー一覧（回号つき／上：新しい・下：古い）</div>
       <div id="history-table-wrap" class="history-table-wrap hidden">
         <table class="history-table">
           <thead>
@@ -25243,32 +25243,51 @@
       updateSummary();
     }
 
-    function showTab(name) {
-      const homePanel = document.getElementById("panel-home");
-      const lotoPanel = document.getElementById("panel-loto");
-      const analysisPanel = document.getElementById("panel-analysis");
-      const tabHome = document.getElementById("tab-home");
-      const tabLoto = document.getElementById("tab-loto");
-      const tabAnalysis = document.getElementById("tab-analysis");
+    // ===== タブ切り替え =====
+function showTab(name) {
+  const homePanel = document.getElementById("panel-home");
+  const lotoPanel = document.getElementById("panel-loto");
+  const analysisPanel = document.getElementById("panel-analysis");
+  const tabHome = document.getElementById("tab-home");
+  const tabLoto = document.getElementById("tab-loto");
+  const tabAnalysis = document.getElementById("tab-analysis");
 
-      homePanel.classList.add("hidden");
-      lotoPanel.classList.add("hidden");
-      analysisPanel.classList.add("hidden");
-      tabHome.classList.remove("active");
-      tabLoto.classList.remove("active");
-      tabAnalysis.classList.remove("active");
+  homePanel.classList.add("hidden");
+  lotoPanel.classList.add("hidden");
+  analysisPanel.classList.add("hidden");
+  tabHome.classList.remove("active");
+  tabLoto.classList.remove("active");
+  tabAnalysis.classList.remove("active");
 
-      if (name === "home") {
-        homePanel.classList.remove("hidden");
-        tabHome.classList.add("active");
-      } else if (name === "loto") {
-        lotoPanel.classList.remove("hidden");
-        tabLoto.classList.add("active");
-      } else {
-        analysisPanel.classList.remove("hidden");
-        tabAnalysis.classList.add("active");
-      }
+  if (name === "home") {
+    homePanel.classList.remove("hidden");
+    tabHome.classList.add("active");
+  } else if (name === "loto") {
+    lotoPanel.classList.remove("hidden");
+    tabLoto.classList.add("active");
+  } else {
+    analysisPanel.classList.remove("hidden");
+    tabAnalysis.classList.add("active");
+  }
+}
+
+// ホーム → 「③ バックナンバー一覧を見る」専用スクロール
+function goToHistoryList() {
+  // まずタブを「過去データ解析」に切り替え
+  showTab('analysis');
+
+  // タブが表示されてからスクロール（少し待つ）
+  setTimeout(function () {
+    const el = document.getElementById("history-list-section");
+    if (el) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
     }
+  }, 50);
+}
+
 
     // ===== AI用の重み計算（総出現＋直近30回） =====
     function computeAiWeights() {
