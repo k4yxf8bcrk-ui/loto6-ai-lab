@@ -302,6 +302,10 @@ button:disabled {
       color: #0f172a;
       box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
     }
+    <label>
+  <input type="checkbox" id="hot-mode">
+  🔥 激アツモード（頻出数字がさらに出やすくなる）
+</label>
   </style>
 
   <!-- 棒グラフ用 Chart.js 読み込み -->
@@ -25526,6 +25530,14 @@ cmt += "ボーナス候補: " + pad2(bonus);
 
       renderLotoIconsAnimated(results, topSet);
     }
+    // 🔥 激アツモード補正（頻出TOP10の数字を強化）
+const hot = document.getElementById("hot-mode")?.checked;
+if (hot) {
+  const topNums = getTopFrequentNumbers(10); // 金ボール候補
+  topNums.forEach(n => {
+    weights[n] *= 3;   // 補正倍率（3倍）分かりやすい数字！
+  });
+}
 
     // ===== アイコン表示を一個ずつ出すアニメーション =====
     function renderLotoIconsAnimated(results, topSet) {
