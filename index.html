@@ -329,7 +329,69 @@
       </div>
     </div>
     <button onclick="generateLoto()">AIおまかせで予想する</button>
-    
+        // ===== アイコン表示を一個ずつ出すアニメーション =====
+    function renderLotoIconsAnimated(results, topSet) {
+      const iconsContainer = document.getElementById("loto-result-icons");
+      if (!iconsContainer) return;
+
+      iconsContainer.innerHTML = "";
+
+      const ballInterval = 80;   // 玉1個ごとの間隔（ミリ秒）
+      const rowExtraDelay = 250; // 次の口に移る前の余白
+
+      let globalDelay = 0;
+
+      results.forEach((res, rowIndex) => {
+        const row = document.createElement("div");
+        row.style.marginBottom = "4px";
+
+        const labelNode = document.createTextNode("【" + (rowIndex + 1) + "口目】 ");
+        row.appendChild(labelNode);
+        iconsContainer.appendChild(row);
+
+        const mainNums = res.main;
+        const bonus = res.bonus;
+        const aiEnabled = res.aiEnabled;
+
+        // 本数字 6個を一個ずつ出す
+        mainNums.forEach((n, i) => {
+          const delay = globalDelay + i * ballInterval;
+          setTimeout(() => {
+            const span = document.createElement("span");
+
+            let cls = "ball ball-pop"; // アニメ付き
+
+            if (aiEnabled) {
+              cls += " ball-ai";
+              if (topSet && topSet[n]) {
+                cls += " ball-ai-strong";
+              }
+            }
+
+            span.className = cls;
+            span.textContent = pad2(n);
+            row.appendChild(span);
+          }, delay);
+        });
+
+        // ボーナス玉を最後にポンッと出す
+        const bonusDelay = globalDelay + mainNums.length * ballInterval + ballInterval;
+        setTimeout(() => {
+          const spanB = document.createElement("span");
+          let bonusCls = "ball ball-bonus ball-pop";
+          if (aiEnabled) {
+            bonusCls += " ball-ai-bonus";
+          }
+          spanB.className = bonusCls;
+          spanB.textContent = pad2(bonus);
+          row.appendChild(spanB);
+        }, bonusDelay);
+
+        // 次の口の基準時間をずらす
+        globalDelay = bonusDelay + rowExtraDelay;
+      });
+    }
+
 
     <div class="field" style="margin-top:4px;">
       <label>予想結果（アイコン表示）</label>
