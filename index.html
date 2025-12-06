@@ -329,68 +329,7 @@
       </div>
     </div>
     <button onclick="generateLoto()">AIおまかせで予想する</button>
-        // ===== アイコン表示を一個ずつ出すアニメーション =====
-    function renderLotoIconsAnimated(results, topSet) {
-      const iconsContainer = document.getElementById("loto-result-icons");
-      if (!iconsContainer) return;
-
-      iconsContainer.innerHTML = "";
-
-      const ballInterval = 80;   // 玉1個ごとの間隔（ミリ秒）
-      const rowExtraDelay = 250; // 次の口に移る前の余白
-
-      let globalDelay = 0;
-
-      results.forEach((res, rowIndex) => {
-        const row = document.createElement("div");
-        row.style.marginBottom = "4px";
-
-        const labelNode = document.createTextNode("【" + (rowIndex + 1) + "口目】 ");
-        row.appendChild(labelNode);
-        iconsContainer.appendChild(row);
-
-        const mainNums = res.main;
-        const bonus = res.bonus;
-        const aiEnabled = res.aiEnabled;
-
-        // 本数字 6個を一個ずつ出す
-        mainNums.forEach((n, i) => {
-          const delay = globalDelay + i * ballInterval;
-          setTimeout(() => {
-            const span = document.createElement("span");
-
-            let cls = "ball ball-pop"; // アニメ付き
-
-            if (aiEnabled) {
-              cls += " ball-ai";
-              if (topSet && topSet[n]) {
-                cls += " ball-ai-strong";
-              }
-            }
-
-            span.className = cls;
-            span.textContent = pad2(n);
-            row.appendChild(span);
-          }, delay);
-        });
-
-        // ボーナス玉を最後にポンッと出す
-        const bonusDelay = globalDelay + mainNums.length * ballInterval + ballInterval;
-        setTimeout(() => {
-          const spanB = document.createElement("span");
-          let bonusCls = "ball ball-bonus ball-pop";
-          if (aiEnabled) {
-            bonusCls += " ball-ai-bonus";
-          }
-          spanB.className = bonusCls;
-          spanB.textContent = pad2(bonus);
-          row.appendChild(spanB);
-        }, bonusDelay);
-
-        // 次の口の基準時間をずらす
-        globalDelay = bonusDelay + rowExtraDelay;
-      });
-    }
+        
 
 
     <div class="field" style="margin-top:4px;">
@@ -25448,12 +25387,11 @@ function goToHistoryList() {
       return String(n).padStart(2, "0");
     }
 
-        // ===== ロト6予想 =====
+        // =====     // ===== ロト6予想 =====
     function generateLoto() {
       const countInput = document.getElementById("loto-count");
       const sort = document.getElementById("loto-sort").checked;
       const useAI = document.getElementById("loto-ai-mode");
-      const resultArea = document.getElementById("loto-result");   // 無ければ null のまま
       const commentArea = document.getElementById("loto-comment");
       const iconsContainer = document.getElementById("loto-result-icons");
 
@@ -25462,7 +25400,6 @@ function goToHistoryList() {
       if (count > 20) count = 20;
       countInput.value = count;
 
-      const lines = [];
       const comments = [];
       iconsContainer.innerHTML = "";
 
@@ -25473,6 +25410,9 @@ function goToHistoryList() {
 
       const aiWeights = aiEnabled ? computeAiWeights() : null;
 
+      // 表示用の結果をためる配列
+      const results = [];
+
       for (let i = 0; i < count; i++) {
         let mainNums;
         if (aiEnabled) {
@@ -25481,7 +25421,7 @@ function goToHistoryList() {
           mainNums = generateRandomLoto6();
         }
 
-        // ボーナス候補を決定（本数字とは別の1個）
+        // ボーナス候補
         let bonus;
         if (aiEnabled) {
           bonus = generateWeightedBonus(aiWeights, mainNums);
@@ -25493,9 +25433,6 @@ function goToHistoryList() {
         if (sort) {
           displayMain.sort(function(a, b) { return a - b; });
         }
-
-        const line = displayMain.map(n => pad2(n)).join(" ") + " (" + pad2(bonus) + ")";
-        lines.push(line);
 
         // AIコメント
         let cmt = "【" + (i + 1) + "口目】";
@@ -25517,6 +25454,84 @@ function goToHistoryList() {
           cmt += "AI解析データを使わず、完全ランダムで生成（ボーナス候補も含む）";
         }
         comments.push(cmt);
+
+        results.push({
+          index: i,
+          main: displayMain,
+          bonus: bonus,
+          aiEnabled: aiEnabled
+        });
+      }
+
+      if (commentArea) {
+        commentArea.value = comments.join("\n");
+      }
+
+      renderLotoIconsAnimated(results, topSet);
+    }
+    // ===== アイコン表示を一個ずつ出すアニメーション =====
+    function renderLotoIconsAnimated(results, topSet) {
+      const iconsContainer = document.getElementById("loto-result-icons");
+      if (!iconsContainer) return;
+
+      iconsContainer.innerHTML = "";
+
+      const ballInterval = 80;   // 玉1個ごとの間隔（ミリ秒）
+      const rowExtraDelay = 250; // 次の口に移る前の余白
+
+      let globalDelay = 0;
+
+      results.forEach((res, rowIndex) => {
+        const row = document.createElement("div");
+        row.style.marginBottom = "4px";
+
+        const labelNode = document.createTextNode("【" + (rowIndex + 1) + "口目】 ");
+        row.appendChild(labelNode);
+        iconsContainer.appendChild(row);
+
+        const mainNums = res.main;
+        const bonus = res.bonus;
+        const aiEnabled = res.aiEnabled;
+
+        // 本数字 6個を一個ずつ出す
+        mainNums.forEach((n, i) => {
+          const delay = globalDelay + i * ballInterval;
+          setTimeout(() => {
+            const span = document.createElement("span");
+
+            let cls = "ball ball-pop"; // アニメ付き
+
+            if (aiEnabled) {
+              cls += " ball-ai";
+              if (topSet && topSet[n]) {
+                cls += " ball-ai-strong";
+              }
+            }
+
+            span.className = cls;
+            span.textContent = pad2(n);
+            row.appendChild(span);
+          }, delay);
+        });
+
+        // ボーナス玉を最後にポンッと出す
+        const bonusDelay = globalDelay + mainNums.length * ballInterval + ballInterval;
+        setTimeout(() => {
+          const spanB = document.createElement("span");
+          let bonusCls = "ball ball-bonus ball-pop";
+          if (aiEnabled) {
+            bonusCls += " ball-ai-bonus";
+          }
+          spanB.className = bonusCls;
+          spanB.textContent = pad2(bonus);
+          row.appendChild(spanB);
+        }, bonusDelay);
+
+        // 次の口の基準時間をずらす
+        globalDelay = bonusDelay + rowExtraDelay;
+      });
+    }
+
 
         // ===== アイコン表示（ここで玉の見た目を変化させる） =====
         const row = document.createElement("div");
