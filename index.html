@@ -198,6 +198,53 @@
       border: 1px solid #7fb8f2;
       color: #0f172a;
     }
+    /* === AI予想用の玉デザイン＆アニメーション === */
+    .ball {
+      transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+    }
+
+    /* 生成されたときにポンッと出るアニメーション */
+    .ball-pop {
+      animation: ball-pop 0.35s ease-out;
+    }
+
+    @keyframes ball-pop {
+      0% {
+        transform: scale(0.1);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.15);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* AI予想モードで使う玉（通常数字） */
+    .ball-ai {
+      background: linear-gradient(135deg, #eef2ff, #ffffff);
+      border-color: #6366f1;
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+    }
+
+    /* AI的に“頻出”で強く推している数字（トップ10など） */
+    .ball-ai-strong {
+      background: linear-gradient(135deg, #fee2e2, #f97316);
+      border-color: #f97316;
+      color: #111827;
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6);
+    }
+
+    /* AIモード時のボーナス玉（ちょっと特別感） */
+    .ball-ai-bonus {
+      background: linear-gradient(135deg, #e0f2fe, #f9fafb);
+      border-color: #0ea5e9;
+      color: #0f172a;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+    }
 
   </style>
 
@@ -25339,12 +25386,12 @@ function goToHistoryList() {
       return String(n).padStart(2, "0");
     }
 
-    // ===== ロト6予想 =====
+        // ===== ロト6予想 =====
     function generateLoto() {
       const countInput = document.getElementById("loto-count");
       const sort = document.getElementById("loto-sort").checked;
       const useAI = document.getElementById("loto-ai-mode");
-      const resultArea = document.getElementById("loto-result");
+      const resultArea = document.getElementById("loto-result");   // 無ければ null のまま
       const commentArea = document.getElementById("loto-comment");
       const iconsContainer = document.getElementById("loto-result-icons");
 
@@ -25409,7 +25456,7 @@ function goToHistoryList() {
         }
         comments.push(cmt);
 
-        // アイコン表示
+        // ===== アイコン表示（ここで玉の見た目を変化させる） =====
         const row = document.createElement("div");
         row.style.marginBottom = "4px";
 
@@ -25418,19 +25465,37 @@ function goToHistoryList() {
 
         displayMain.forEach(n => {
           const span = document.createElement("span");
-          span.className = "ball";
+
+          // 基本クラス
+          let cls = "ball ball-pop";
+
+          // AIモードのときだけ、見た目に差を付ける
+          if (aiEnabled) {
+            cls += " ball-ai";
+            // 頻出TOP10の数字はさらに強調
+            if (topSet[n]) {
+              cls += " ball-ai-strong";
+            }
+          }
+
+          span.className = cls;
           span.textContent = pad2(n);
           row.appendChild(span);
         });
 
         const spanB = document.createElement("span");
-        spanB.className = "ball ball-bonus";
+        let bonusCls = "ball ball-bonus ball-pop";
+        if (aiEnabled) {
+          bonusCls += " ball-ai-bonus";
+        }
+        spanB.className = bonusCls;
         spanB.textContent = pad2(bonus);
         row.appendChild(spanB);
 
         iconsContainer.appendChild(row);
       }
 
+      
       
       commentArea.value = comments.join("\n");
     }
