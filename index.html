@@ -282,12 +282,7 @@
       </div>
     </div>
     <button onclick="generateLoto()">AIおまかせで予想する</button>
-    <button class="secondary" onclick="copyResult('loto-result')">結果をコピー（テキスト）</button>
-
-    <div class="field" style="margin-top:8px;">
-      <label>予想結果（テキスト形式：本数字6個＋ボーナス候補）</label>
-      <textarea id="loto-result" placeholder="ここにロト6の予想結果が表示されます"></textarea>
-    </div>
+    
 
     <div class="field" style="margin-top:4px;">
       <label>予想結果（アイコン表示）</label>
@@ -25436,7 +25431,7 @@ function goToHistoryList() {
         iconsContainer.appendChild(row);
       }
 
-      resultArea.value = lines.join("\n");
+      
       commentArea.value = comments.join("\n");
     }
 
