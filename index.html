@@ -215,6 +215,38 @@ button:disabled {
   opacity: 0.5;
   cursor: default;
 }
+    /* --- スロット玉デザイン（予想結果と同じ丸玉にする） --- */
+.slot-ball {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  color: #111;
+  font-size: 0.8rem;
+  text-align: center;
+  line-height: 32px;
+  margin-right: 4px;
+}
+
+/* ボーナスは水色玉 */
+.slot-bonus-ball {
+  background: #e6f7ff;
+  border-color: #7fb8f2;
+  color: #0f172a;
+}
+
+/* 止まる時のポンッ演出 */
+.slot-ball.slot-hit {
+  animation: slot-pop 0.25s ease-out;
+}
+
+@keyframes slot-pop {
+  0% { transform: scale(0.75); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
 
     .slot-cell.slot-bonus {
       background: #e6f7ff;
@@ -372,14 +404,16 @@ button:disabled {
       </div>
       <button type="button" id="loto-slot-btn" onclick="startLotoSlot()">🎰 スロット演出で決定</button>
       <div class="slot-row" style="margin-top:4px;">
-        <div class="slot-cell" id="slot-main-0">--</div>
-        <div class="slot-cell" id="slot-main-1">--</div>
-        <div class="slot-cell" id="slot-main-2">--</div>
-        <div class="slot-cell" id="slot-main-3">--</div>
-        <div class="slot-cell" id="slot-main-4">--</div>
-        <div class="slot-cell" id="slot-main-5">--</div>
-        <div class="slot-cell slot-bonus" id="slot-bonus">--</div>
-      </div>
+  <div class="slot-cell slot-ball" id="slot-main-0">--</div>
+  <div class="slot-cell slot-ball" id="slot-main-1">--</div>
+  <div class="slot-cell slot-ball" id="slot-main-2">--</div>
+  <div class="slot-cell slot-ball" id="slot-main-3">--</div>
+  <div class="slot-cell slot-ball" id="slot-main-4">--</div>
+  <div class="slot-cell slot-ball" id="slot-main-5">--</div>
+
+  <!-- ボーナスは水色玉 -->
+  <div class="slot-cell slot-ball slot-bonus-ball" id="slot-bonus">--</div>
+</div>
     </div>
 
     <div class="field" style="margin-top:4px;">
